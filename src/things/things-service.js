@@ -7,30 +7,41 @@ const ThingsService = {
       .from('thingful_things AS thg')
       .select(
         'thg.id',
-        'thg.title',
+        'thg.user_name',
+        'thg.full_name',
+        'thg.password',
+        'thg.nickname',
         'thg.date_created',
-        'thg.content',
-        'thg.image',
-        ...userFields,
+        'thg.date_modified',
         db.raw(
-          `count(DISTINCT rev) AS number_of_reviews`
+          'count(DISTINCT rev) AS number_of_reviews'
         ),
         db.raw(
-          `AVG(rev.rating) AS average_review_rating`
-        ),
-      )
-      .leftJoin(
-        'thingful_reviews AS rev',
-        'thg.id',
-        'rev.thing_id',
-      )
-      .leftJoin(
-        'thingful_users AS usr',
-        'thg.user_id',
-        'usr.id',
-      )
-      .groupBy('thg.id', 'usr.id')
-  },
+          `json_strip_nulls(
+            json_build_object(
+              json_build_object(
+                'id', usr.id,
+                'user_name', usr.user_name,
+                'full_name', usr.full_name,
+                'nickname', usr.nickname,
+                'date_created', usr.date_created,
+                'date_modified', usr.date_modified
+              )
+            ) AS "author"`
+          ),
+        )
+        .leftJoin(
+          'thingful_reviews AS rev',
+          'thg.id',
+          'rev.thing_id',
+        )
+        .leftJoin(
+          'thingful_users AS usr',
+          'thg.user_id',
+          'usr.id',
+        )
+        .groupBy('thg.id', 'usr.id')
+    },
 
   getById(db, id) {
     return ThingsService.getAllThings(db)
@@ -58,6 +69,7 @@ const ThingsService = {
   },
 
   serializeThings(things) {
+    console.log(things);
     return things.map(this.serializeThing)
   },
 

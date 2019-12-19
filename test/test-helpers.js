@@ -133,7 +133,7 @@ function makeReviewsArray(users, things) {
   ];
 }
 
-function makeExpectedThing(users, thing, reviews=[]) {
+function makeExpectedThing(users, thing, reviews = []) {
   const user = users
     .find(user => user.id === thing.user_id)
 
@@ -162,7 +162,7 @@ function makeExpectedThing(users, thing, reviews=[]) {
 }
 
 function calculateAverageReviewRating(reviews) {
-  if(!reviews.length) return 0
+  if (!reviews.length) return 0
 
   const sum = reviews
     .map(review => review.rating)
@@ -221,28 +221,51 @@ function makeThingsFixtures() {
 }
 
 function cleanTables(db) {
-  return db.raw(
-    `TRUNCATE
+  return db.transaction(trx =>
+    trx.raw(
+      `TRUNCATE
       thingful_things,
       thingful_users,
       thingful_reviews
-      RESTART IDENTITY CASCADE`
+      `
+    )
+      .then(() =>
+        Promise.all([
+          trx.raw(`ALTER SEQUENCE thingful_things_id_seq minvalue 0 START WITH 1`),
+          trx.raw(`ALTER SEQUENCE thingful_users_id_seq minvalue 0 START WITH 1`),
+          trx.raw(`ALTER SEQUENCE thingful_reviews_id_seq minvalue 0 START WITH 1`),
+          trx.raw(`SELECT setval('thingful_things_id_seq', 0)`),
+          trx.raw(`SELECT setval('thingful_users_id_seq', 0)`),
+          trx.raw(`SELECT setval('thingful_reviews_id_seq', 0)`),
+        ])
+      )
   )
 }
 
-function seedThingsTables(db, users, things, reviews=[]) {
-  return db
-    .into('thingful_users')
-    .insert(users)
-    .then(() =>
-      db
-        .into('thingful_things')
-        .insert(things)
-    )
-    .then(() =>
-      reviews.length && db.into('thingful_reviews').insert(reviews)
-    )
+function seedThingsTables(db, users, things, reviews = []) {
+  return db.transaction(async trx => {
+    await trx.into('thingful_users').insert(users)
+    await trx.into('thingful_things').insert(things)
+    await Promise.all([
+      trx.raw(
+        `SELECT setval('thingful_users_id_seq', ?)`,
+        [users[users.length - 1].id],
+      ),
+      trx.raw(
+        `SELECT setval('thingful_things_id_seq', ?)`,
+        [things[things.length - 1].id],
+      ),
+    ])
+    if (reviews.length) {
+      await trx.into('thingful_reviews').insert(reviews)
+      await trx.raw(
+        `SELECT setval('thingful_reviews_id_seq', ?)`,
+        [reviews[reviews.length - 1].id],
+      )
+    }
+  })
 }
+
 
 function seedMaliciousThing(db, user, thing) {
   return db
@@ -253,6 +276,11 @@ function seedMaliciousThing(db, user, thing) {
         .into('thingful_things')
         .insert([thing])
     )
+}
+
+function makeAuthHeader(user) {
+  const token = Buffer.from(`${user.user_name}:${user.password}`).toString('base64')
+  return `Basic ${token}`
 }
 
 module.exports = {
@@ -267,4 +295,5 @@ module.exports = {
   cleanTables,
   seedThingsTables,
   seedMaliciousThing,
+  makeAuthHeader,
 }
