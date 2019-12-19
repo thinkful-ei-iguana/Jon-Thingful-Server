@@ -6,30 +6,10 @@ const ThingsService = {
     return db
       .from('thingful_things AS thg')
       .select(
-        'thg.id',
-        'thg.user_name',
-        'thg.full_name',
-        'thg.password',
-        'thg.nickname',
-        'thg.date_created',
-        'thg.date_modified',
-        db.raw(
-          'count(DISTINCT rev) AS number_of_reviews'
-        ),
-        db.raw(
-          `json_strip_nulls(
-            json_build_object(
-              json_build_object(
-                'id', usr.id,
-                'user_name', usr.user_name,
-                'full_name', usr.full_name,
-                'nickname', usr.nickname,
-                'date_created', usr.date_created,
-                'date_modified', usr.date_modified
-              )
-            ) AS "author"`
-          ),
+      
+    
         )
+        console.log('hey')
         .leftJoin(
           'thingful_reviews AS rev',
           'thg.id',
