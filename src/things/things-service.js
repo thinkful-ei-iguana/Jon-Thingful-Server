@@ -9,7 +9,6 @@ const ThingsService = {
       
     
         )
-        console.log('hey')
         .leftJoin(
           'thingful_reviews AS rev',
           'thg.id',
@@ -20,7 +19,7 @@ const ThingsService = {
           'thg.user_id',
           'usr.id',
         )
-        .groupBy('thg.id', 'usr.id')
+        .groupBy('thg.id', 'usr.id', 'rev.id')
     },
 
   getById(db, id) {
